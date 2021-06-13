@@ -1,10 +1,10 @@
 // TODO:
 // only custom motions (ex. 236HP) are added to moveobj currently (see line 467)
-// l.legs == light legs; h.fireball = 236HP not 236*P etc
+// l.legs should = light legs; h.fireball should = 236HP not 236*P etc
 // directions and motions without buttons aren't interpreted and displayed properly (ie. "6" is not a move, its to be an image of forward)
 // custom Translations are still defined in this file and can't be changed on the website
-// radio button for "forward" meaning "medium kick" or to move forwards
-// enter to work on buttons
+// radio/toggle button for "forward" meaning "medium kick" or to move forwards, or other cases
+// enter key to work on buttons
 // [state] [strength] [attack] (crouching heavy punch, standing light kick, standing short, towards fierce?) parsing
 // fixing next image distances (line 1205, etc)
 // numOfHits text display and probably other text to display on screen; use textWidth
@@ -159,6 +159,8 @@ const notation = {
 
 // p5.js asset preloading
 function preload() {
+    btnP = loadImage(`${imagesURLprepend}buttons/p.png`);
+    btnK = loadImage(`${imagesURLprepend}buttons/k.png`);
     btnLP = loadImage(`${imagesURLprepend}buttons/lp.png`);
     btnLK = loadImage(`${imagesURLprepend}buttons/lk.png`);
     btnMP = loadImage(`${imagesURLprepend}buttons/mp.png`);
@@ -280,7 +282,7 @@ function parseMoveType(move) {
         }
 
         // if all else fails, assume it is custom
-        return("custom?")
+        return("custom")
     }
 }
 
@@ -288,10 +290,10 @@ function parseInput() {
     let input = (textInput.value()).replace(/\s+/g, ' ')
     let moveObj = {}  // object of input split move by move with all relevant information stored
 
-    // console.log(`Input: ${input}\n----`)
+    console.log(`Input: ${input}`)
     syntaxChecking(input)
 
-    // object population
+    // moveObj object population
     input = input.replace(/,/g, ' ,') // splitting commas to be their own element of an object; commas denote links, ">", "xx" denote cancels
     let split = input.split(" ")
     for (splitIndex = 0; splitIndex < split.length; splitIndex++) {
@@ -300,22 +302,22 @@ function parseInput() {
         moveObj[splitIndex] = {}
         moveObj[splitIndex]["move"] = move
         moveObj[splitIndex]["moveType"] = moveType
-        if (moveObj[splitIndex]["moveType"] == "custom?") {
-            moveObj[splitIndex]["moveNotation"] = "custom"
+        if (moveObj[splitIndex]["moveType"] != "custom") {
+            moveObj[splitIndex]["moveNotation"] = parseMoveNotation(move)
         }
         else {
-            moveObj[splitIndex]["moveNotation"] = parseMoveNotation(move)
+            moveObj[splitIndex]["moveNotation"] = "custom"
         }
     }
 
-    // console.log("moveObj after initialization and population:")
-    // Object.keys(moveObj).forEach(i => console.log(`    ${i}: ${JSON.stringify(moveObj[i])}`))
+    console.log("moveObj after initialization and population:")
+    Object.keys(moveObj).forEach(i => console.log(`    ${i}: ${JSON.stringify(moveObj[i])}`))
 
     // if there are any custom move definitions that need to be turned into notation,
     // their indexes in moveObj are stored in the object "cmi"
     let cmi = {}
     let customPhraseNum = 0 // goes up when the next word being inspected in moveObj is not a custom word, so we know when to start categorizing the next custom move
-    // if there are multiple moves with moveType "custom?" occuring in moveObj sequentially, they must be referencing one move with multiple words (ie. "lightning legs")
+    // if there are multiple moves with moveType "custom" occuring in moveObj sequentially, they must be referencing one move with multiple words (ie. "lightning legs")
     // to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values
     let customStreak = false
     let streakJustIncremented = false
@@ -360,6 +362,8 @@ function parseInput() {
     }
 
     customPhraseNum--
+    console.log("cmi after initialization and population:")
+    Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
 
     // after looping through moveObj move types to populate cmi with custom move definition instances and list indexes, this loop is for
     // finding which custom moves are meant to take the space of those indexes by checking to see if there are any matches between
@@ -388,9 +392,11 @@ function parseInput() {
         }
     }
 
+    console.log("cmi after matching indexes to moves:")
+    Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
+
     // next, custom move definitions that have move names containing spaces or multiple words that take up
     // multiple elements of the moveObj are combined into one entry, the extras being deleted.
-    // this is also where move types are changed from "custom?" to "custom"
 
     function trimObj(customPhraseNum) {
         for (cpni = 1; cpni < customPhraseNum; cpni++) {
@@ -1251,7 +1257,7 @@ function parseInputToImg(resultArr, moveObj) {
                     // h += 10
                     // text(resultArr[ai], w, h, width, textSizeValue)
                     // h -= 10
-                    // w += Math.floor(textWidth(resultArr[ai]))
+                    // w += Math.round(textWidth(resultArr[ai]))
                     // break
                 default:
                     console.log(`hit default of resultArr[ai] switch statement: caused by '${resultArr[ai]}' in resultArr`)
