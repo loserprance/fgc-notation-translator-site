@@ -2,6 +2,7 @@
 // IMPLEMENTATION NOT DONE (CTRL+F)
 // l.legs == light legs; h.fireball = 236HP not 236*P etc
 // [state] [strength] [attack] (crouching heavy punch, standing light kick, standing short, towards fierce?)
+// numOfHits (1)
 const notation = require("./notation.json")
 
 // custom user defined moves; special moves, unique attacks, game-specific information...

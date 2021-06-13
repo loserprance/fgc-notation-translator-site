@@ -1,12 +1,19 @@
 // TODO:
-// only custom motions are added to moveobj currently
+// only custom motions (ex. 236HP) are added to moveobj currently (see line 467)
 // l.legs == light legs; h.fireball = 236HP not 236*P etc
-// [state] [strength] [attack] (crouching heavy punch, standing light kick, standing short, towards fierce?)
-// local storage
+// directions and motions without buttons aren't interpreted and displayed properly (ie. "6" is not a move, its to be an image of forward)
+// custom Translations are still defined in this file and can't be changed on the website
+// radio button for "forward" meaning "medium kick" or to move forwards
+// enter to work on buttons
+// [state] [strength] [attack] (crouching heavy punch, standing light kick, standing short, towards fierce?) parsing
+// fixing next image distances (line 1205, etc)
+// numOfHits text display and probably other text to display on screen; use textWidth
+// download button isn't cropping canvas properly
 
-// only necessary offline
+// only necessary offline because of CORS or something
 const imagesURLprepend = "https://raw.githubusercontent.com/loserprance/fgc-notation-translator-site/master/images/"
 
+// should be json i don't have to keep here taking space; ironically having a hard time using it in native js without node, so here's the whole object
 const notation = {
     "directions": {
         "1" : {
@@ -89,7 +96,7 @@ const notation = {
             "abbreviation": "rdp",
             "full" : "Reverse Dragon Punch"
         },
-        "6321478": {
+        "360": { // argument to be made this should be 6321478 or something similar
             "abbreviation": "360",
             "full" : "360"
         },
@@ -150,37 +157,37 @@ const notation = {
     }
 }
 
-// p5.js asset preload
+// p5.js asset preloading
 function preload() {
-  btnLP = loadImage(`${imagesURLprepend}buttons/lp.png`);
-  btnLK = loadImage(`${imagesURLprepend}buttons/lk.png`);
-  btnMP = loadImage(`${imagesURLprepend}buttons/mp.png`);
-  btnMK = loadImage(`${imagesURLprepend}buttons/mk.png`);
-  btnHP = loadImage(`${imagesURLprepend}buttons/hp.png`);
-  btnHK = loadImage(`${imagesURLprepend}buttons/hk.png`);
-  btnPPP = loadImage(`${imagesURLprepend}buttons/3p.png`);
-  btnKKK = loadImage(`${imagesURLprepend}buttons/3k.png`);
+    btnLP = loadImage(`${imagesURLprepend}buttons/lp.png`);
+    btnLK = loadImage(`${imagesURLprepend}buttons/lk.png`);
+    btnMP = loadImage(`${imagesURLprepend}buttons/mp.png`);
+    btnMK = loadImage(`${imagesURLprepend}buttons/mk.png`);
+    btnHP = loadImage(`${imagesURLprepend}buttons/hp.png`);
+    btnHK = loadImage(`${imagesURLprepend}buttons/hk.png`);
+    btnPPP = loadImage(`${imagesURLprepend}buttons/3p.png`);
+    btnKKK = loadImage(`${imagesURLprepend}buttons/3k.png`);
 
-  dir1 = loadImage(`${imagesURLprepend}directions/db.png`);
-  dir2 = loadImage(`${imagesURLprepend}directions/d.png`);
-  dir3 = loadImage(`${imagesURLprepend}directions/df.png`);
-  dir4 = loadImage(`${imagesURLprepend}directions/b.png`);
-  dir5 = loadImage(`${imagesURLprepend}directions/n.png`);
-  dir6 = loadImage(`${imagesURLprepend}directions/f.png`);
-  dir7 = loadImage(`${imagesURLprepend}directions/ub.png`);
-  dir8 = loadImage(`${imagesURLprepend}directions/u.png`);
-  dir9 = loadImage(`${imagesURLprepend}directions/uf.png`);
+    dir1 = loadImage(`${imagesURLprepend}directions/db.png`);
+    dir2 = loadImage(`${imagesURLprepend}directions/d.png`);
+    dir3 = loadImage(`${imagesURLprepend}directions/df.png`);
+    dir4 = loadImage(`${imagesURLprepend}directions/b.png`);
+    dir5 = loadImage(`${imagesURLprepend}directions/n.png`);
+    dir6 = loadImage(`${imagesURLprepend}directions/f.png`);
+    dir7 = loadImage(`${imagesURLprepend}directions/ub.png`);
+    dir8 = loadImage(`${imagesURLprepend}directions/u.png`);
+    dir9 = loadImage(`${imagesURLprepend}directions/uf.png`);
 
-  mtn360 = loadImage(`${imagesURLprepend}motions/360.png`);
-  mtnBDBD = loadImage(`${imagesURLprepend}motions/bdbd.png`);
-  mtnDP = loadImage(`${imagesURLprepend}motions/dp.png`);
-  mtnFDFD = loadImage(`${imagesURLprepend}motions/fdfd.png`);
-  mtnHCB = loadImage(`${imagesURLprepend}motions/hcb.png`);
-  mtnHCF = loadImage(`${imagesURLprepend}motions/hcf.png`);
-  mtnQCB = loadImage(`${imagesURLprepend}motions/qcb.png`);
-  mtnQCF = loadImage(`${imagesURLprepend}motions/qcf.png`);
-  mtnRDP = loadImage(`${imagesURLprepend}motions/rdp.png`);
-  mtnTK = loadImage(`${imagesURLprepend}motions/tk.png`);
+    mtn360 = loadImage(`${imagesURLprepend}motions/360.png`);
+    mtnBDBD = loadImage(`${imagesURLprepend}motions/bdbd.png`);
+    mtnDP = loadImage(`${imagesURLprepend}motions/dp.png`);
+    mtnFDFD = loadImage(`${imagesURLprepend}motions/fdfd.png`);
+    mtnHCB = loadImage(`${imagesURLprepend}motions/hcb.png`);
+    mtnHCF = loadImage(`${imagesURLprepend}motions/hcf.png`);
+    mtnQCB = loadImage(`${imagesURLprepend}motions/qcb.png`);
+    mtnQCF = loadImage(`${imagesURLprepend}motions/qcf.png`);
+    mtnRDP = loadImage(`${imagesURLprepend}motions/rdp.png`);
+    mtnTK = loadImage(`${imagesURLprepend}motions/tk.png`);
 }
 
 function syntaxChecking(string) {
@@ -231,18 +238,18 @@ function parseMoveType(move) {
         return("link")
     }
 
-    let moveNotation = parseMoveNotation(move)
-    // if there are brackets in this move, this is a charge move ("[2]8LK... or [d]u+lk?")
+    // if there are brackets in this move, assume it is a charge move ("[2]8LK, [d]u+lk")
     if (move.includes("[") || move.includes("]")) {
         return("charge")
     }
     else {
+        let moveNotation = parseMoveNotation(move)
         if (moveNotation == "numpad") {
-            // else, if we're in numpad notation and the second character of this move is a number, this is a motion (ie. 236HP)
+            // else, if we're in numpad notation and the second character of this move is a number, assume it is a motion (ie. 236HP)
             if (!isNaN(move[1])) {
                 return("motion")
             }
-            // else, it's numpad notation for a direction + a button (ie. 2MK)
+            // else, assume it is numpad notation for a direction + a button (ie. 2MK)
             else {
                 return("button")
             }
@@ -272,7 +279,7 @@ function parseMoveType(move) {
             }
         }
 
-        // all else fails
+        // if all else fails, assume it is custom
         return("custom?")
     }
 }
@@ -500,6 +507,7 @@ function parseInput() {
 
         if (moveNotation == "numpad") {
             if (moveType == "charge") {
+                console.log("found charge move in numpad notation")
                 let lbi = move.indexOf("[")+1
                 let rbi = move.indexOf("]")
 
@@ -549,7 +557,7 @@ function parseInput() {
                     moveObj[moi]["input"]["directions"]["release"]["dirStateAbvs"].push(notation["directions"][rdi]["stateAbv"])
                 }
 
-                btn = (move[4] + move[5]).toUpperCase()
+                btn = move.substring(move.length-2).toUpperCase()
                 moveObj[moi]["input"]["button"] = {}
                 moveObj[moi]["input"]["button"]["shortform"] = btn
                 moveObj[moi]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
@@ -560,6 +568,9 @@ function parseInput() {
                 moveObj[moi]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
             }
             else if (moveType == "motion") {
+                if (move.includes("+")) {
+                    move = move.replace("+", "")
+                }
                 if (move.length != 3 && Number(move.substring(0, 2)) > 10) {
                     let attackStrengths = ["L", "M", "H", "*", "EX", "l", "m", "h", "Ex", "eX", "ex"]
                     attackStrengths.forEach(attstr => {
@@ -593,7 +604,7 @@ function parseInput() {
                 }
 
                 let direction = move[0]
-                let btn = move[1]+move[2]
+                let btn = (move[1]+move[2]).toUpperCase()
                 moveObj[moi]["input"]["directions"] = {}
                 moveObj[moi]["input"]["directions"]["dirNums"] = [direction]
                 moveObj[moi]["input"]["directions"]["dirAbvs"] = []
@@ -620,10 +631,9 @@ function parseInput() {
         else if (moveNotation == "capcom") {
             if (moveType == "button") {
                 let numOfHits = 0
-                if (move.includes("(") || move.includes(")")) {
+                if (move.includes("(") && move.includes(")")) {
                     numOfHits = move.substring(move.indexOf("(")+1,move.indexOf(")"))
-                    let lpc = (move.match(/\(/g) || []).length
-                    move = move.substring(0, move.indexOf(lpc)-1)
+                    move = move.substring(0, move.indexOf("("))
                 }
                 moveObj[moi]["input"]["button"] = {}
                 btn = findBtn(move)
@@ -871,7 +881,8 @@ function setup() {
     }
     dlButton.mousePressed(dlFinishedCanvas);
 
-    canvas = createCanvas(510, 400);
+    canvas = createCanvas(600, 37);
+    //resizeCanvas(1920, 1080, true)
     canvas.position(20, 100)
     noLoop()
 }
@@ -960,6 +971,7 @@ function parseMoveObj(moveObj) {
                 }
                 break;
             case "charge":
+                console.log("found charge move in capcom notation")
                 let hold = moveObjEntry["input"]["directions"]["hold"]["dirNums"][0]
                 let release = moveObjEntry["input"]["directions"]["release"]["dirNums"][0]
                 let chrBtn = moveObjEntry["input"]["button"]["shortform"].toLowerCase()
@@ -981,12 +993,11 @@ function parseMoveObj(moveObj) {
                     releaseAbv = release
                 }
 
-                // resultArr.push(`[ [[File:${holdAbv}.png]] ] `)
-                resultArr.push(`[{dirToReplace}${holdAbv}]`)
-                // resultArr.push(`[[File:${releaseAbv}.png]] `)
+                resultArr.push(`[`)
+                resultArr.push(`{dirToReplace}${holdAbv}`)
+                resultArr.push(`]`)
                 resultArr.push(`{dirToReplace}${releaseAbv}`)
                 resultArr.push(`+`)
-                // resultArr.push(`[[File:${chrBtn}.png]] `)
                 resultArr.push(`{btnToReplace}${chrBtn}`)
                 break;
             case ",":
@@ -998,7 +1009,6 @@ function parseMoveObj(moveObj) {
                 break;
             default:
                 if (currentMoveType == "link" || currentMoveType == "cancel") {
-
                     resultArr.push(`${move}`)
                 }
                 else {
@@ -1050,6 +1060,12 @@ function parseInputToImg(resultArr, moveObj) {
                     }
                 }
 
+                if (resultArr[ai-1] != undefined) {
+                    if (resultArr[ai-1].includes("[") && resultArr[ai-1].includes("]") )  {
+                        w = w-5
+                    }
+                }
+
                 switch(dirNum) {
                     case 1:
                         image(dir1, w, h)
@@ -1083,28 +1099,37 @@ function parseInputToImg(resultArr, moveObj) {
             }
             else if (resultArr[ai].includes("{btnToReplace}")) {
                 let btnAbv = resultArr[ai].replace("{btnToReplace}", "").toUpperCase()
-                w += btnWidth-5
+                switch(resultArr[ai-1]) {
+                    case undefined:
+                        break
+                    case ",":
+                        w += 5
+                        break
+                    default:
+                        w += btnWidth-5
+                        break
+                }
                 switch(btnAbv) {
                     case "LP":
-                        image(btnLP, w, 6)
+                        image(btnLP, w, h+6)
                         break;
                     case "MP":
-                        image(btnMP, w, 6)
+                        image(btnMP, w, h+6)
                         break;
                     case "HP":
-                        image(btnHP, w, 6)
+                        image(btnHP, w, h+6)
                         break;
                     case "LK":
-                        image(btnLK, w, 6)
+                        image(btnLK, w, h+6)
                         break;
                     case "MK":
-                        image(btnMK, w, 6)
+                        image(btnMK, w, h+6)
                         break;
                     case "HK":
-                        image(btnHK, w, 6)
+                        image(btnHK, w, h+6)
                         break;
                     case "PPP":
-                        image(btnPPP, w, 6)
+                        image(btnPPP, w, h+6)
                         break;
                     case "KKK":
                         image(btnKKK, w, 6)
@@ -1114,22 +1139,67 @@ function parseInputToImg(resultArr, moveObj) {
             }
             else if (resultArr[ai].includes("{motionToReplace}")) {
                 let mtnAbv = resultArr[ai].replace("{motionToReplace}", "").toUpperCase()
-                let img = `mtn${mtnAbv}`
-                // console.log(`Replacing '${resultArr[ai]}' with image '${img}'...`)
+                switch (mtnAbv) {
+                    case "360":
+                        image(mtn360, w, h)
+                        break;
+                    case "BDBD":
+                        image(mtnBDBD, w, h)
+                        break;
+                    case "DP":
+                        image(mtnDP, w, h)
+                        break;
+                    case "FDFD":
+                        image(mtnFDFD, w, h)
+                        break;
+                    case "HCB":
+                        image(mtnHCB, w, h)
+                        break;
+                    case "HCF":
+                        image(mtnHCF, w, h)
+                        break;
+                    case "QCB":
+                        image(mtnQCB, w, h)
+                        break;
+                    case "QCF":
+                        image(mtnQCF, w, h)
+                        break;
+                    case "RDP":
+                        image(mtnRDP, w, h)
+                        break;
+                    case "TK":
+                        image(mtnTK, w, h)
+                        break;
+                }
+                w += dirWidth
             }
         }
         else {
             switch(resultArr[ai]) {
                 case ",":
+                    w += 3
+                    text(",", w, 10, width, textSizeValue)
+                    switch(resultArr[ai+1]) {
+                        case "{dirToReplace}b":
+                            w += 11
+                            break
+                        case "{dirToReplace}u/b":
+                            w += 7
+                            break
+                        case "{dirToReplace}d/b":
+                            w += 7
+                            break
+                        default:
+                            w += 6
+                    }
                     break
                 case ">":
                     w += 5
-                    text(">", w, 10, width, textSizeValue)
+                    text(">", w, h+10, width, textSizeValue)
                     if ((resultArr[ai+1]).includes("dirToReplace")) {
 
                         switch(resultArr[ai+1]) {
                             case "{dirToReplace}b":
-                                console.log("backthatshitup")
                                 w += 21
                                 break
                             case "{dirToReplace}u/b":
@@ -1142,11 +1212,26 @@ function parseInputToImg(resultArr, moveObj) {
                                 w += 16
                         }
                     }
+                    else if ((resultArr[ai+1]).includes("motionToReplace")) {
+
+                        switch(resultArr[ai+1]) {
+                            case ("{motionToReplace}qcf"):
+                                w += 160
+                                break;
+                        }
+                    }
+                    else if ((resultArr[ai+1]).includes("btnToReplace")) {
+                        // this puts 5 pixels of distance between the right most single pixel on a >, which might seem unnecessary
+                        w += 1
+                        break;
+                    }
                     break
                 case "+":
-                    console.log(`Last entry was '${resultArr[ai-1]}'`)
                     switch(resultArr[ai-1]) {
                         case "{dirToReplace}f":
+                            w += 5
+                            break
+                        case "{motionToReplace}qcf":
                             w += 5
                             break
                         case "{dirToReplace}u/f":
@@ -1160,11 +1245,28 @@ function parseInputToImg(resultArr, moveObj) {
                     break
                 case "xx":
                     break
+                // case "(1)":
+                    // console.log("numOfHits!!")
+                    // w += 5
+                    // h += 10
+                    // text(resultArr[ai], w, h, width, textSizeValue)
+                    // h -= 10
+                    // w += Math.floor(textWidth(resultArr[ai]))
+                    // break
+                default:
+                    console.log(`hit default of resultArr[ai] switch statement: caused by '${resultArr[ai]}' in resultArr`)
+                    console.log(`textWidth of '${resultArr[ai]}': ${textWidth(resultArr[ai])}`)
+                    console.log(resultArr[ai])
+                    text(resultArr[ai], w+5, h+10, width, textSizeValue)
+                    w += textWidth(resultArr[ai])+5
+                    break
             }
-
         }
     }
-    console.log(resultArr)
+    let c = get(0, 0, w, h+dirWidth)
+    clear()
+    image(c, 0,0)
+    // console.log(resultArr)
 
     // inputValue = textInput.value()
     // text(inputValue, 3, 3, canvas.size()["width"], canvas.size()["height"])
