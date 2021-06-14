@@ -145,6 +145,12 @@ const notation = {
                 "strength" : "Heavy",
                 "attack" : "Kick"
             },
+            "P": {
+                "attack" : "Punch"
+            },
+            "K": {
+                "attack" : "Kick"
+            },
             "PP": {
                 "strength" : "EX",
                 "attack" : "Punch"
@@ -240,6 +246,7 @@ function parseMoveType(move) {
         return("link")
     }
 
+
     // if there are brackets in this move, assume it is a charge move ("[2]8LK, [d]u+lk")
     if (move.includes("[") || move.includes("]")) {
         return("charge")
@@ -247,6 +254,10 @@ function parseMoveType(move) {
     else {
         let moveNotation = parseMoveNotation(move)
         if (moveNotation == "numpad") {
+            // if the move is simply a number 1-9, it's a direction in numpad notation
+            if (!isNaN(move[0]) && move.length == 1 && move[0] != 0) {
+                return("direction")
+            }
             // else, if we're in numpad notation and the second character of this move is a number, assume it is a motion (ie. 236HP)
             if (!isNaN(move[1])) {
                 return("motion")
@@ -258,14 +269,23 @@ function parseMoveType(move) {
         }
         else if (moveNotation == "capcom") {
 
+            // if the entirety of the move matches up to the abbreviation for a direction written in capcom (u/b, f, etc.), this is a direction
+            for (directionIndex = 0; directionIndex < Object.keys(notation["directions"]).length; directionIndex++) {
+                let directionKey = Object.keys(notation["directions"])[directionIndex]
+                if (notation["directions"][directionKey]["abbreviation"] == move || notation["directions"][directionKey]["abbreviation"].replace("\/", "") == move) {
+                    return("direction")
+                }
+            }
+
+            // if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
             for (motionIndex = 0; motionIndex < Object.keys(notation["motions"]).length; motionIndex++) {
                 let motionKey = Object.keys(notation["motions"])[motionIndex]
-                // if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
                 if (notation["motions"][motionKey]["abbreviation"] == move.substring(0, notation["motions"][motionKey]["abbreviation"].length)) {
                     return("motion")
                 }
             }
 
+            // if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
             for (buttonIndex = 0; buttonIndex < Object.keys(notation["buttons"]["sf"]).length; buttonIndex++) {
                 let btnKey = Object.keys(notation["buttons"]["sf"])[buttonIndex]
 
@@ -274,7 +294,6 @@ function parseMoveType(move) {
                 }
 
                 let btnLength = btnKey.length
-                // if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
                 if (btnKey.toLowerCase() == move.substring(move.length-btnLength, move.length).toLowerCase()) {
                     return("button")
                 }
@@ -324,7 +343,8 @@ function parseInput() {
     // when the streak ends, continue combing the list for the next occurence of a custom definition
     for (moveObjIndex = 0; moveObjIndex < Object.keys(moveObj).length; moveObjIndex++) {
         move = moveObj[moveObjIndex]
-        moveNotation = moveObj[moveObjIndex]["moveNotation"]
+        // console.log(`move: ${JSON.stringify(move)}`)
+        moveNotation = move["moveNotation"]
 
         if (moveNotation == "custom") {
             // console.log(`    Custom streak?: ${customStreak}`)
@@ -332,6 +352,7 @@ function parseInput() {
             // console.log(`    Custom phrase num?: ${customPhraseNum}`)
 
             if (!streakJustIncremented) {
+                // console.log(`    ${customPhraseNum} -> ${customPhraseNum+1}`)
                 customPhraseNum++
                 streakJustIncremented = true
             }
@@ -352,6 +373,8 @@ function parseInput() {
                 }
                 customStreak = true
             }
+
+            // console.log('----')
         }
         else {
             customStreak = false
@@ -361,7 +384,8 @@ function parseInput() {
         }
     }
 
-    customPhraseNum--
+    // customPhraseNum--
+
     console.log("cmi after initialization and population:")
     Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
 
@@ -399,21 +423,21 @@ function parseInput() {
     // multiple elements of the moveObj are combined into one entry, the extras being deleted.
 
     function trimObj(customPhraseNum) {
-        for (cpni = 1; cpni < customPhraseNum; cpni++) {
+        for (cpni = 1; cpni <= customPhraseNum; cpni++) {
             let numOfCustoms = cmi[`custom${cpni}`]["indexes"].length
             let indexFirstElement = cmi[`custom${cpni}`]["indexes"][0]
             let indexLastElement = cmi[`custom${cpni}`]["indexes"][cmi[`custom${cpni}`]["indexes"].length-1]
             let objIndex = ""
 
-            if (indexFirstElement != indexFirstElement) {
+            if (indexFirstElement != indexLastElement) {
                 for (noci = 0; noci < numOfCustoms; noci++) {
                     objIndex = cmi[`custom${cpni}`]["indexes"][noci]
-                    if (noci = 0) {
+                    if (noci == 0) {
                         moveObj[objIndex]["move"] = cmi[`custom${cpni}`]["moveName"]
                         moveObj[objIndex]["moveType"] = "custom"
                     }
                     else {
-                        moveObj[objIndex] = "toDel"
+                        moveObj[objIndex] = null
                     }
                 }
             }
@@ -439,14 +463,15 @@ function parseInput() {
         moveObj = trimObj(customPhraseNum)
     }
 
-    // remove null'd elements from after trimObj function. fix indexes later?
-    for (moi = 0; moi < Object.keys(moveObj).length; moi++) {
-        if (moveObj[moi] == "toDel") {
-            delete (moveObj[moi])
-        }
-    }
+    console.log("moveObj after trimObj trimming:")
+    Object.keys(moveObj).forEach(i => console.log(`    ${i}: ${JSON.stringify(moveObj[i])}`))
 
+
+    // filling out more important information and alternate ways of saying the same thing in different fighting game notation; interprets moves and provides moveObj with more data
     for (moi = 0; moi < Object.keys(moveObj).length; moi++) {
+        if (moveObj[moi] == null) {
+            continue
+        }
         function findBtn(move) {
             // second last character
             let slc = move.substring(move.length-2, move.length-1)
@@ -469,6 +494,7 @@ function parseInput() {
         let moveNotation = moveObj[moi]["moveNotation"]
         moveObj[moi]["input"] = {}
 
+        // ever called...?
         if (moveNotation == "custom") {
             let m = move
             move = customTranslations[m]["input"]["numpadInput"] + customTranslations[m]["input"]["strength"][0] + customTranslations[m]["input"]["attack"][0]
@@ -512,8 +538,21 @@ function parseInput() {
         }
 
         if (moveNotation == "numpad") {
-            if (moveType == "charge") {
-                console.log("found charge move in numpad notation")
+            if (moveType == "direction") {
+                let direction = move[0]
+                moveObj[moi]["input"]["directions"] = {}
+                moveObj[moi]["input"]["directions"]["dirNums"] = [direction]
+                moveObj[moi]["input"]["directions"]["dirAbvs"] = []
+                moveObj[moi]["input"]["directions"]["dirWords"] = []
+                moveObj[moi]["input"]["directions"]["dirStates"] = []
+                moveObj[moi]["input"]["directions"]["dirStateAbvs"] = []
+
+                moveObj[moi]["input"]["directions"]["dirAbvs"].push(notation["directions"][direction]["abbreviation"])
+                moveObj[moi]["input"]["directions"]["dirWords"].push(notation["directions"][direction]["full"])
+                moveObj[moi]["input"]["directions"]["dirStates"].push(notation["directions"][direction]["state"])
+                moveObj[moi]["input"]["directions"]["dirStateAbvs"].push(notation["directions"][direction]["stateAbv"])
+            }
+            else if (moveType == "charge") {
                 let lbi = move.indexOf("[")+1
                 let rbi = move.indexOf("]")
 
@@ -635,7 +674,35 @@ function parseInput() {
             }
         }
         else if (moveNotation == "capcom") {
-            if (moveType == "button") {
+            if (moveType == "direction") {
+                if (move.length > 1 && !move.includes("/")) {
+                    move = move.slice(0,1) + "/" + move.slice(1)
+                }
+
+                directions = []
+                for (i = 0; i < Object.keys(notation["directions"]).length; i++) {
+                    let directionKey = Object.keys(notation["directions"])[i]
+                    if (notation["directions"][directionKey]["abbreviation"] == move) {
+                        directions.push(i+1 + "")
+                    }
+                }
+
+                moveObj[moi]["input"]["directions"] = {}
+                moveObj[moi]["input"]["directions"]["dirNums"] = directions
+                moveObj[moi]["input"]["directions"]["dirAbvs"] = []
+                moveObj[moi]["input"]["directions"]["dirWords"] = []
+                moveObj[moi]["input"]["directions"]["dirStates"] = []
+                moveObj[moi]["input"]["directions"]["dirStateAbvs"] = []
+
+                for (dk = 0; dk < directions.length; dk++) {
+                    let dkk = directions[dk]
+                    moveObj[moi]["input"]["directions"]["dirAbvs"].push(notation["directions"][dkk]["abbreviation"])
+                    moveObj[moi]["input"]["directions"]["dirWords"].push(notation["directions"][dkk]["full"])
+                    moveObj[moi]["input"]["directions"]["dirStates"].push(notation["directions"][dkk]["state"])
+                    moveObj[moi]["input"]["directions"]["dirStateAbvs"].push(notation["directions"][dkk]["stateAbv"])
+                }
+            }
+            else if (moveType == "button") {
                 let numOfHits = 0
                 if (move.includes("(") && move.includes(")")) {
                     numOfHits = move.substring(move.indexOf("(")+1,move.indexOf(")"))
@@ -792,6 +859,12 @@ function parseInput() {
             }
         }
     }
+
+    console.log("moveObj before parseMoveObj function:")
+    Object.keys(moveObj).forEach(i => {
+        console.log(`    ${i}: ${JSON.stringify(moveObj[i])}`)
+    })
+
     parseMoveObj(moveObj)
 }
 
@@ -897,6 +970,9 @@ function parseMoveObj(moveObj) {
     let resultArr = [] // array of moves to combine into string/image once text processing has finished
 
     for (mdi = 0; mdi < Object.keys(moveObj).length; mdi++) {
+        if (moveObj[mdi] == null) {
+            continue
+        }
         let moveObjEntry = moveObj[mdi]
         let move = moveObj[mdi]["move"]
         let currentMoveType = moveObj[mdi]["moveType"]
@@ -908,6 +984,9 @@ function parseMoveObj(moveObj) {
         }
 
         switch(currentMoveType) {
+            case "direction":
+                console.log("direction move type parsing not implemented yet in parseMoveObj function")
+                break;
             case "button":
                 let direction = ""
                 let validDirections = moveObjEntry["input"]["directions"]["dirNums"]
@@ -1116,6 +1195,12 @@ function parseInputToImg(resultArr, moveObj) {
                         break
                 }
                 switch(btnAbv) {
+                    case "P":
+                        image(btnP, w, h+6)
+                        break;
+                    case "K":
+                        image(btnK, w, h+6)
+                        break;
                     case "LP":
                         image(btnLP, w, h+6)
                         break;
