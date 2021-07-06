@@ -1,5 +1,5 @@
 // TODO:
-// only custom motions (ex. 236HP) are added to moveobj currently (see line 467)
+// only custom motions (ex. 236HP) are added to moveobj currently
 // l.legs should = light legs; h.fireball should = 236HP not 236*P etc
 // directions and motions without buttons aren't interpreted and displayed properly (ie. "6" is not a move, its to be an image of forward)
 // custom Translations are still defined in this file and can't be changed on the website
@@ -9,6 +9,7 @@
 // fixing next image distances (line 1205, etc)
 // numOfHits text display and probably other text to display on screen; use textWidth
 // download button isn't cropping canvas properly
+// if directions in numpad direction include a shortcut we have an image for (etc. 2367), image should be the 236 shortcut and then a 7, and not [2, 3, 6, 7]
 
 // only necessary offline because of CORS or something
 const imagesURLprepend = "https://raw.githubusercontent.com/loserprance/fgc-notation-translator-site/master/images/"
@@ -17,57 +18,57 @@ const imagesURLprepend = "https://raw.githubusercontent.com/loserprance/fgc-nota
 const notation = {
     "directions": {
         "1" : {
-            "full" : "down-back",
+            "full" : "Down-Back",
             "abbreviation": "d/b",
-            "state": "crouching",
+            "state": "Crouching",
             "stateAbv": "cr."
         },
         "2" : {
-            "full" : "down",
+            "full" : "Down",
             "abbreviation": "d",
-            "state": "crouching",
+            "state": "Crouching",
             "stateAbv": "cr."
         },
         "3" : {
-            "full" : "down-forward",
+            "full" : "Down-Forward",
             "abbreviation": "d/f",
-            "state": "crouching",
+            "state": "Crouching",
             "stateAbv": "cr."
         },
         "4" : {
-            "full" : "back",
+            "full" : "Back",
             "abbreviation": "b",
-            "state": "back",
+            "state": "Back",
             "stateAbv": "b."
         },
         "5" : {
-            "full" : "neutral",
+            "full" : "Neutral",
             "abbreviation": "n",
-            "state": "standing",
+            "state": "Standing",
             "stateAbv": "st."
         },
         "6" : {
-            "full" : "forward",
+            "full" : "Forward",
             "abbreviation": "f",
-            "state": "towards",
+            "state": "Towards",
             "stateAbv": "f."
         },
         "7" : {
-            "full" : "up-back",
+            "full" : "Up-Back",
             "abbreviation": "u/b",
-            "state": "jumping",
+            "state": "Jumping",
             "stateAbv": "j."
         },
         "8" : {
-            "full" : "up",
+            "full" : "Up",
             "abbreviation": "u",
-            "state": "neutral jumping",
+            "state": "Neutral Jumping",
             "stateAbv": "nj."
         },
         "9" : {
-            "full" : "up-forward",
+            "full" : "Up-Forward",
             "abbreviation": "u/f",
-            "state": "jumping",
+            "state": "Jumping",
             "stateAbv": "j."
         }
     },
@@ -246,7 +247,6 @@ function parseMoveType(move) {
         return("link")
     }
 
-
     // if there are brackets in this move, assume it is a charge move ("[2]8LK, [d]u+lk")
     if (move.includes("[") || move.includes("]")) {
         return("charge")
@@ -313,7 +313,8 @@ function parseInput() {
     syntaxChecking(input)
 
     // moveObj object population
-    input = input.replace(/,/g, ' ,') // splitting commas to be their own element of an object; commas denote links, ">", "xx" denote cancels
+    input = input.replace(/,/g, ' , ') // splitting commas to be their own element of an object; commas denote links, ">", "xx" denote cancels
+    input = input.replace(/\s+/g, ' ')
     let split = input.split(" ")
     for (splitIndex = 0; splitIndex < split.length; splitIndex++) {
         let move = split[splitIndex]
@@ -373,8 +374,6 @@ function parseInput() {
                 }
                 customStreak = true
             }
-
-            // console.log('----')
         }
         else {
             customStreak = false
@@ -386,8 +385,10 @@ function parseInput() {
 
     // customPhraseNum--
 
-    console.log("cmi after initialization and population:")
-    Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
+    if (Object.keys(cmi).length != 0) {
+        console.log("cmi after initialization and population:")
+        Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
+    }
 
     // after looping through moveObj move types to populate cmi with custom move definition instances and list indexes, this loop is for
     // finding which custom moves are meant to take the space of those indexes by checking to see if there are any matches between
@@ -416,8 +417,10 @@ function parseInput() {
         }
     }
 
-    console.log("cmi after matching indexes to moves:")
-    Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
+    if (Object.keys(cmi).length != 0) {
+        console.log("cmi after matching indexes to moves:")
+        Object.keys(cmi).forEach(i => console.log(`    ${i}: ${JSON.stringify(cmi[i])}`))
+    }
 
     // next, custom move definitions that have move names containing spaces or multiple words that take up
     // multiple elements of the moveObj are combined into one entry, the extras being deleted.
@@ -613,6 +616,39 @@ function parseInput() {
                 moveObj[moi]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
             }
             else if (moveType == "motion") {
+                if (!isNaN(move)) {
+                    let motionNum = move
+                    moveObj[moi]["input"]["motions"] = {}
+                    moveObj[moi]["input"]["motions"]["num"] = motionNum
+                    // if this motion number has a specific image that could represent it better,
+                    if (Object.keys(notation["motions"]).includes(motionNum)) {
+                        moveObj[moi]["input"]["motions"]["abv"] = notation["motions"][motionNum]["abbreviation"]
+                        moveObj[moi]["input"]["motions"]["word"] = notation["motions"][motionNum]["full"]
+                    }
+                    else {
+                        moveObj[moi]["input"]["motions"]["abv"] = ""
+                        moveObj[moi]["input"]["motions"]["word"] = ""
+                        for (i = 0; i < motionNum.length; i++) {
+                            let directionAbv = notation["directions"][`${motionNum[i]}`]["abbreviation"]
+                            let directionWord = notation["directions"][`${motionNum[i]}`]["full"]
+                            if (directionAbv != undefined) {
+                                moveObj[moi]["input"]["motions"]["abv"] += `${directionAbv}`
+
+                                if (i != motionNum.length-1) {
+                                    moveObj[moi]["input"]["motions"]["abv"] += `, `
+                                }
+                            }
+                            if (directionWord != undefined) {
+                                moveObj[moi]["input"]["motions"]["word"] += `${directionWord}`
+
+                                if (i != motionNum.length-1) {
+                                    moveObj[moi]["input"]["motions"]["word"] += `, `
+                                }
+                            }
+                        }
+                    }
+
+                }
                 if (move.includes("+")) {
                     move = move.replace("+", "")
                 }
@@ -621,10 +657,36 @@ function parseInput() {
                     attackStrengths.forEach(attstr => {
                         if (move.split(attstr)[1]) {
                             let motionNum = move.split(attstr)[0]
+
                             moveObj[moi]["input"]["motions"] = {}
                             moveObj[moi]["input"]["motions"]["num"] = motionNum
-                            moveObj[moi]["input"]["motions"]["abv"] = notation["motions"][motionNum]["abbreviation"]
-                            moveObj[moi]["input"]["motions"]["word"] = notation["motions"][motionNum]["full"]
+                            // if this motion number has a specific image that could represent it better,
+                            if (Object.keys(notation["motions"]).includes(motionNum)) {
+                                moveObj[moi]["input"]["motions"]["abv"] = notation["motions"][motionNum]["abbreviation"]
+                                moveObj[moi]["input"]["motions"]["word"] = notation["motions"][motionNum]["full"]
+                            }
+                            else {
+                                moveObj[moi]["input"]["motions"]["abv"] = ""
+                                moveObj[moi]["input"]["motions"]["word"] = ""
+                                for (i = 0; i < motionNum.length; i++) {
+                                    let directionAbv = notation["directions"][`${motionNum[i]}`]["abbreviation"]
+                                    let directionWord = notation["directions"][`${motionNum[i]}`]["full"]
+                                    if (directionAbv != undefined) {
+                                        moveObj[moi]["input"]["motions"]["abv"] += `${directionAbv}`
+
+                                        if (i != motionNum.length-1) {
+                                            moveObj[moi]["input"]["motions"]["abv"] += `, `
+                                        }
+                                    }
+                                    if (directionWord != undefined) {
+                                        moveObj[moi]["input"]["motions"]["word"] += `${directionWord}`
+
+                                        if (i != motionNum.length-1) {
+                                            moveObj[moi]["input"]["motions"]["word"] += `, `
+                                        }
+                                    }
+                                }
+                            }
 
                             btn = (attstr + move.split(attstr)[1]).toUpperCase()
                             moveObj[moi]["input"]["button"] = {}
@@ -720,10 +782,10 @@ function parseInput() {
 
                 moveObj[moi]["input"]["directions"] = {}
                 let directions = []
-                if (move.length == 2) {
+                if (move.length == 2) { // assuming button is 2 characters ("HP", "LK"), making direction neutral
                     directions = ["5"]
                 }
-                else if (move.includes(".")) {
+                else if (move.includes(".")) { // "cr.hp"?
                     let dotIndex = move.indexOf(".")
                     let directionStateAbv = ""
                     directions = []
@@ -737,8 +799,39 @@ function parseInput() {
                         directions == ["2"]
                     }
                 }
+                else if (move.includes("+")) {
+                    let direction = move.split("+")[0]
+                    console.log(`direction: ${direction}`)
+
+                    if (direction.length > 1 && !direction.includes("/")) {
+                        direction = direction.slice(0,1) + "/" + direction.slice(1)
+                    }
+
+                    directions = []
+                    for (i = 0; i < Object.keys(notation["directions"]).length; i++) {
+                        let directionKey = Object.keys(notation["directions"])[i]
+                        if (notation["directions"][directionKey]["abbreviation"] == direction) {
+                            directions.push(i+1 + "")
+                        }
+                    }
+
+                    moveObj[moi]["input"]["directions"] = {}
+                    moveObj[moi]["input"]["directions"]["dirNums"] = directions
+                    moveObj[moi]["input"]["directions"]["dirAbvs"] = []
+                    moveObj[moi]["input"]["directions"]["dirWords"] = []
+                    moveObj[moi]["input"]["directions"]["dirStates"] = []
+                    moveObj[moi]["input"]["directions"]["dirStateAbvs"] = []
+
+                    for (dk = 0; dk < directions.length; dk++) {
+                        let dkk = directions[dk]
+                        moveObj[moi]["input"]["directions"]["dirAbvs"].push(notation["directions"][dkk]["abbreviation"])
+                        moveObj[moi]["input"]["directions"]["dirWords"].push(notation["directions"][dkk]["full"])
+                        moveObj[moi]["input"]["directions"]["dirStates"].push(notation["directions"][dkk]["state"])
+                        moveObj[moi]["input"]["directions"]["dirStateAbvs"].push(notation["directions"][dkk]["stateAbv"])
+                    }
+                }
                 else {
-                    console.log("failed to parse button with no period")
+                    console.log("failed to parse button in capcom notation in parseInput")
                 }
 
                 moveObj[moi]["input"]["directions"]["dirNums"] = directions
@@ -985,7 +1078,17 @@ function parseMoveObj(moveObj) {
 
         switch(currentMoveType) {
             case "direction":
-                console.log("direction move type parsing not implemented yet in parseMoveObj function")
+                console.log(`move: ${move}`)
+                console.log(moveObjEntry)
+                // if numpad notation (move is a number)
+                resultArr.push(`{dirToReplace}${moveObjEntry["input"]["directions"]["dirAbvs"][0]}`)
+                if (!isNaN(move)) {
+                    resultArr.push(`{dirToReplace}${move}`)
+
+                }
+                else {
+
+                }
                 break;
             case "button":
                 let direction = ""
@@ -1022,38 +1125,50 @@ function parseMoveObj(moveObj) {
                 break;
             case "motion":
                 let motionNum = moveObjEntry["input"]["motions"]["num"]
-                let motionAbv = notation["motions"][motionNum]["abbreviation"]
-                let motBtn = moveObjEntry["input"]["button"]["shortform"].toLowerCase()
-                let isPreviousElementBtn = false
-                let newBtn = ""
-
-                if (motBtn[0] == "*") {
-                    for (nbsf = 0; nbsf < Object.keys(notation["buttons"]["sf"]).length; nbsf++) {
-                        let nbsfk = Object.keys(notation["buttons"]["sf"])[nbsf]
-                        if (resultArr.length != 0) {
-                            if (nbsfk.toLowerCase() == resultArr[resultArr.length - 1].toLowerCase()) {
-                                isPreviousElementBtn = true;
-                                newBtn = resultArr[resultArr.length - 1].substring(7,9)
-                                resultArr.pop()
-                            }
-                        }
-                    }
+                let motionAbv = ""
+                if (moveObjEntry["input"]["motions"]["abv"].includes(",")) {
+                    motionAbv = moveObjEntry["input"]["motions"]["abv"]
+                }
+                else {
+                    motionAbv = notation["motions"][motionNum]["abbreviation"]
                 }
 
                 // resultArr.push(`[[File:${motionAbv}.png]] `)
                 resultArr.push(`{motionToReplace}${motionAbv}`)
-                resultArr.push("+")
-                if (isPreviousElementBtn) {
-                    // resultArr.push(`[[File:${newBtn}.png]] `)
-                    resultArr.push(`{btnToReplace}${newBtn}`)
-                }
-                else {
+
+                if (moveObjEntry["input"]["button"] != undefined) {
+                    let motBtn = moveObjEntry["input"]["button"]["shortform"].toLowerCase()
+                    let isPreviousElementBtn = false
+                    let newBtn = ""
+
                     if (motBtn[0] == "*") {
-                        motBtn = motBtn[motBtn.length - 1]
+                        for (nbsf = 0; nbsf < Object.keys(notation["buttons"]["sf"]).length; nbsf++) {
+                            let nbsfk = Object.keys(notation["buttons"]["sf"])[nbsf]
+                            if (resultArr.length != 0) {
+                                if (nbsfk.toLowerCase() == resultArr[resultArr.length - 1].toLowerCase()) {
+                                    isPreviousElementBtn = true;
+                                    newBtn = resultArr[resultArr.length - 1].substring(7,9)
+                                    resultArr.pop()
+                                }
+                            }
+                        }
                     }
-                    // resultArr.push(`[[File:${motBtn}.png]] `)
-                    resultArr.push(`{btnToReplace}${motBtn}`)
+
+
+                    resultArr.push("+")
+                    if (isPreviousElementBtn) {
+                        // resultArr.push(`[[File:${newBtn}.png]] `)
+                        resultArr.push(`{btnToReplace}${newBtn}`)
+                    }
+                    else {
+                        if (motBtn[0] == "*") {
+                            motBtn = motBtn[motBtn.length - 1]
+                        }
+                        // resultArr.push(`[[File:${motBtn}.png]] `)
+                        resultArr.push(`{btnToReplace}${motBtn}`)
+                    }
                 }
+
                 break;
             case "charge":
                 console.log("found charge move in capcom notation")
@@ -1229,40 +1344,96 @@ function parseInputToImg(resultArr, moveObj) {
                 w += btnWidth
             }
             else if (resultArr[ai].includes("{motionToReplace}")) {
-                let mtnAbv = resultArr[ai].replace("{motionToReplace}", "").toUpperCase()
-                switch (mtnAbv) {
-                    case "360":
-                        image(mtn360, w, h)
-                        break;
-                    case "BDBD":
-                        image(mtnBDBD, w, h)
-                        break;
-                    case "DP":
-                        image(mtnDP, w, h)
-                        break;
-                    case "FDFD":
-                        image(mtnFDFD, w, h)
-                        break;
-                    case "HCB":
-                        image(mtnHCB, w, h)
-                        break;
-                    case "HCF":
-                        image(mtnHCF, w, h)
-                        break;
-                    case "QCB":
-                        image(mtnQCB, w, h)
-                        break;
-                    case "QCF":
-                        image(mtnQCF, w, h)
-                        break;
-                    case "RDP":
-                        image(mtnRDP, w, h)
-                        break;
-                    case "TK":
-                        image(mtnTK, w, h)
-                        break;
+                if (resultArr[ai].includes(", ")) {
+                    let directions = (resultArr[ai].replace("{motionToReplace}", "")).split(", ")
+                    directions.forEach((direction, index) => {
+                        let dirAbv = direction
+
+                        if (resultArr[ai].includes("[") && resultArr[ai].includes("]")) {
+                            dirAbv = dirAbv.substring(dirAbv.indexOf("[")+1, dirAbv.indexOf("]"))
+                        }
+                        let dirNum = 0
+
+                        for (dn = 1; dn < Object.keys(notation["directions"]).length+1; dn++) {
+                            if (dirAbv == notation["directions"][dn]["abbreviation"]) {
+                                dirNum = dn
+                            }
+                        }
+
+                        if (resultArr[ai-1] != undefined) {
+                            if (resultArr[ai-1].includes("[") && resultArr[ai-1].includes("]") )  {
+                                w = w-5
+                            }
+                        }
+
+                        switch(dirNum) {
+                            case 1:
+                                image(dir1, w, h)
+                                break
+                            case 2:
+                                image(dir2, w, h)
+                                break
+                            case 3:
+                                image(dir3, w, h)
+                                break
+                            case 4:
+                                image(dir4, w, h)
+                                break
+                            case 5:
+                                image(dir5, w, h)
+                                break
+                            case 6:
+                                image(dir6, w, h)
+                                break
+                            case 7:
+                                image(dir7, w, h)
+                                break
+                            case 8:
+                                image(dir8, w, h)
+                                break
+                            case 9:
+                                image(dir9, w, h)
+                                break
+                        }
+                        w += dirWidth
+                    })
                 }
-                w += dirWidth
+                else {
+                    let mtnAbv = resultArr[ai].replace("{motionToReplace}", "").toUpperCase()
+                    switch (mtnAbv) {
+                        case "360":
+                            image(mtn360, w, h)
+                            break;
+                        case "BDBD":
+                            image(mtnBDBD, w, h)
+                            break;
+                        case "DP":
+                            image(mtnDP, w, h)
+                            break;
+                        case "FDFD":
+                            image(mtnFDFD, w, h)
+                            break;
+                        case "HCB":
+                            image(mtnHCB, w, h)
+                            break;
+                        case "HCF":
+                            image(mtnHCF, w, h)
+                            break;
+                        case "QCB":
+                            image(mtnQCB, w, h)
+                            break;
+                        case "QCF":
+                            image(mtnQCF, w, h)
+                            break;
+                        case "RDP":
+                            image(mtnRDP, w, h)
+                            break;
+                        case "TK":
+                            image(mtnTK, w, h)
+                            break;
+                    }
+                    w += dirWidth
+                }
             }
         }
         else {
